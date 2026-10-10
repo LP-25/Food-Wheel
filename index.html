@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>等一下吃什麼？食物決策輪盤</title>
+  <style>
+    :root {
+      --bg-color: #f7f9fc;
+      --card-bg: #ffffff;
+      --primary: #ff6b6b;
+      --primary-hover: #fa5252;
+      --text: #2d3748;
+      --text-muted: #718096;
+      --border: #e2e8f0;
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+      color: #1a202c;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    @media (min-width: 768px) {
+      .container {
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: center;
+      }
+    }
+
+    /* 輪盤區塊 */
+    .wheel-card {
+      background: var(--card-bg);
+      padding: 24px;
+      border-radius: var(--radius);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    .wheel-wrapper {
+      position: relative;
+      width: 320px;
+      height: 320px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+    }
+
+    .pointer {
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 14px solid transparent;
+      border-right: 14px solid transparent;
+      border-top: 24px solid #1a202c;
+      z-index: 10;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    }
+
+    .spin-btn {
+      margin-top: 24px;
+      width: 100%;
+      padding: 14px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--primary);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .spin-btn:hover {
+      background: var(--primary-hover);
+    }
+
+    .spin-btn:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* 選項設定區塊 */
+    .settings-card {
+      background: var(--card-bg);
+      padding: 24px;
+      border-radius: var(--radius);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .settings-card h2 {
+      font-size: 1.2rem;
+      margin-bottom: 16px;
+    }
+
+    .preset-buttons {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .preset-btn {
+      background: #edf2f7;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .preset-btn:hover {
+      background: #e2e8f0;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .input-group input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      outline: none;
+      font-size: 0.95rem;
+    }
+
+    .input-group input:focus {
+      border-color: var(--primary);
+    }
+
+    .add-btn {
+      padding: 10px 16px;
+      background: #2b6cb0;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .add-btn:hover {
+      background: #2c5282;
+    }
+
+    .items-list {
+      max-height: 240px;
+      overflow-y: auto;
+      list-style: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px;
+    }
+
+    .item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
+
+    .item:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    .delete-btn {
+      background: transparent;
+      border: none;
+      color: #e53e3e;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 4px;
+    }
+
+    /* 結果彈窗 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: #fff;
+      padding: 32px 24px;
+      border-radius: 20px;
+      text-align: center;
+      max-width: 320px;
+      width: 90%;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal h3 {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .modal .result-text {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 24px;
+    }
+
+    .modal-close-btn {
+      padding: 10px 20px;
+      background: #edf2f7;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .modal-close-btn:hover {
+      background: #e2e8f0;
+    }
+
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 99;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>等一下吃什麼？食物決策輪盤</h1>
+    <p>擺脫選擇困難，交給機率決定你的一餐！</p>
+  </header>
+
+  <div class="container">
+    <!-- 輪盤主體 -->
+    <div class="wheel-card">
+      <div class="wheel-wrapper">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="600" height="600"></canvas>
+      </div>
+      <button class="spin-btn" id="spinBtn">轉動輪盤</button>
+    </div>
+
+    <!-- 選項清單 -->
+    <div class="settings-card">
+      <h2>選項管理</h2>
+      <div class="preset-buttons">
+        <button class="preset-btn" onclick="loadPreset('daily')">日常便當</button>
+        <button class="preset-btn" onclick="loadPreset('luxury')">奢華好料</button>
+        <button class="preset-btn" onclick="loadPreset('afternoon')">下午茶甜點</button>
+      </div>
+
+      <div class="input-group">
+        <input type="text" id="itemInput" placeholder="新增菜色或店家..." maxlength="12">
+        <button class="add-btn" id="addBtn">新增</button>
+      </div>
+
+      <ul class="items-list" id="itemsList"></ul>
+    </div>
+  </div>
+
+  <!-- 結果彈窗 -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <h3>命運之輪的決定是：</h3>
+      <div class="result-text" id="resultText">滷肉飯</div>
+      <button class="modal-close-btn" id="modalCloseBtn">好的，出發！</button>
+    </div>
+  </div>
+
+  <canvas id="confetti-canvas"></canvas>
+
+  <script>
+    const COLORS = [
+      "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", 
+      "#9966FF", "#FF9F40", "#00B894", "#E17055",
+      "#6C5CE7", "#FDCB6E", "#0984E3", "#D63031"
+    ];
+
+    const PRESETS = {
+      daily: ["排骨便當", "丼飯", "水餃", "乾麵", "健康餐", "麥當勞", "炒飯", "雞肉飯", "滷肉飯", "小火鍋", "飯捲", "咖哩飯"],
+      luxury: ["日式燒肉", "海底撈", "藏壽司", "義大利麵", "韓式烤肉", "牛排", "披薩"],
+      afternoon: ["珍珠奶茶", "鬆餅", "雞蛋糕", "冰淇淋", "蘋果冰茶", "可麗露"]
+    };
+
+    let items = JSON.parse(localStorage.getItem("food_wheel_items")) || PRESETS.daily;
+    let currentAngle = 0;
+    let isSpinning = false;
+
+    const canvas = document.getElementById("wheel");
+    const ctx = canvas.getContext("2d");
+    const spinBtn = document.getElementById("spinBtn");
+    const itemInput = document.getElementById("itemInput");
+    const addBtn = document.getElementById("addBtn");
+    const itemsList = document.getElementById("itemsList");
+    const modalOverlay = document.getElementById("modalOverlay");
+    const modalCloseBtn = document.getElementById("modalCloseBtn");
+    const resultText = document.getElementById("resultText");
+
+    // 繪製輪盤
+    function drawWheel() {
+      const numItems = items.length;
+      const arc = (2 * Math.PI) / numItems;
+      const radius = canvas.width / 2;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+      ctx.translate(radius, radius);
+      ctx.rotate(currentAngle);
+
+      for (let i = 0; i < numItems; i++) {
+        const angle = i * arc;
+        ctx.beginPath();
+        ctx.fillStyle = COLORS[i % COLORS.length];
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, radius, angle, angle + arc);
+        ctx.lineTo(0, 0);
+        ctx.fill();
+
+        // 繪製文字
+        ctx.save();
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 24px sans-serif";
+        ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+        ctx.shadowBlur = 4;
+        ctx.translate(
+          Math.cos(angle + arc / 2) * (radius * 0.65),
+          Math.sin(angle + arc / 2) * (radius * 0.65)
+        );
+        ctx.rotate(angle + arc / 2 + Math.PI / 2);
+        const text = items[i];
+        ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    // 更新選項列表
+    function updateList() {
+      itemsList.innerHTML = "";
+      items.forEach((item, index) => {
+        const li = document.createElement("li");
+        li.className = "item";
+        li.innerHTML = `
+          <span>${item}</span>
+          <button class="delete-btn" onclick="removeItem(${index})">&times;</button>
+        `;
+        itemsList.appendChild(li);
+      });
+      localStorage.setItem("food_wheel_items", JSON.stringify(items));
+      drawWheel();
+      spinBtn.disabled = items.length < 2;
+    }
+
+    function removeItem(index) {
+      if (items.length <= 2) {
+        alert("至少需要保留 2 個選項才能轉動！");
+        return;
+      }
+      items.splice(index, 1);
+      updateList();
+    }
+
+    function addItem() {
+      const val = itemInput.value.trim();
+      if (!val) return;
+      if (items.includes(val)) {
+        alert("此項目已存在！");
+        return;
+      }
+      items.push(val);
+      itemInput.value = "";
+      updateList();
+    }
+
+    function loadPreset(key) {
+      items = [...PRESETS[key]];
+      updateList();
+    }
+
+    // 旋轉動態
+    function spin() {
+      if (isSpinning || items.length < 2) return;
+      isSpinning = true;
+      spinBtn.disabled = true;
+
+      const spins = 5 + Math.random() * 3; // 轉 5~8 圈
+      const extraAngle = Math.random() * Math.PI * 2;
+      const targetAngle = currentAngle + spins * Math.PI * 2 + extraAngle;
+      const duration = 4000;
+      const start = performance.now();
+      const initialAngle = currentAngle;
+
+      function animate(time) {
+        const elapsed = time - start;
+        const progress = Math.min(elapsed / duration, 1);
+        // Ease-out Cubic
+        const ease = 1 - Math.pow(1 - progress, 3);
+        currentAngle = initialAngle + (targetAngle - initialAngle) * ease;
+        drawWheel();
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          isSpinning = false;
+          spinBtn.disabled = false;
+          determineWinner();
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    // 計算指針停留之項目
+    function determineWinner() {
+      const numItems = items.length;
+      const arc = (2 * Math.PI) / numItems;
+      // 指針位於正上方 (270 度或 3π/2)
+      let normalizedAngle = (1.5 * Math.PI - currentAngle) % (2 * Math.PI);
+      if (normalizedAngle < 0) normalizedAngle += 2 * Math.PI;
+
+      const winningIndex = Math.floor(normalizedAngle / arc);
+      const winner = items[winningIndex];
+
+      resultText.innerText = winner;
+      modalOverlay.classList.add("active");
+      triggerConfetti();
+    }
+
+    // 簡易紙花效果
+    function triggerConfetti() {
+      const c = document.getElementById("confetti-canvas");
+      const cCtx = c.getContext("2d");
+      c.width = window.innerWidth;
+      c.height = window.innerHeight;
+
+      const particles = Array.from({ length: 80 }).map(() => ({
+        x: Math.random() * c.width,
+        y: -10,
+        r: Math.random() * 6 + 4,
+        d: Math.random() * 80,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        tilt: Math.random() * 10 - 10,
+        tiltAngle: 0,
+        tiltAngleIncremental: (Math.random() * 0.07) + 0.05
+      }));
+
+      let animationFrame;
+      const startTime = performance.now();
+
+      function run() {
+        cCtx.clearRect(0, 0, c.width, c.height);
+        particles.forEach(p => {
+          p.tiltAngle += p.tiltAngleIncremental;
+          p.y += (Math.cos(p.d) + 3 + p.r / 2);
+          p.tilt = Math.sin(p.tiltAngle - (particles.indexOf(p) / 3)) * 15;
+
+          cCtx.beginPath();
+          cCtx.lineWidth = p.r;
+          cCtx.strokeStyle = p.color;
+          cCtx.moveTo(p.x + p.tilt + p.r / 2, p.y);
+          cCtx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+          cCtx.stroke();
+        });
+
+        if (performance.now() - startTime < 2500) {
+          animationFrame = requestAnimationFrame(run);
+        } else {
+          cCtx.clearRect(0, 0, c.width, c.height);
+          cancelAnimationFrame(animationFrame);
+        }
+      }
+      run();
+    }
+
+    // 事件監聽
+    spinBtn.addEventListener("click", spin);
+    addBtn.addEventListener("click", addItem);
+    itemInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") addItem();
+    });
+    modalCloseBtn.addEventListener("click", () => {
+      modalOverlay.classList.remove("active");
+    });
+
+    // 初始化
+    updateList();
+  </script>
+</body>
+</html>
